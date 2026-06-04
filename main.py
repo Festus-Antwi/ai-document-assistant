@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from app.api.documents import router as api_document_router
 from app.api.ai import router as api_ai_router
+
 from app.web.documents import router as web_document_router
 from app.web.ai import router as web_ai_router
 
@@ -31,8 +32,11 @@ app.include_router(web_ai_router, prefix="/ai", tags=["AI"], include_in_schema=F
 @app.get("/")
 def root():
     return {
-        "message": "Enterprise AI Assistant"
+        "message": "Enterprise AI Document Assistant"
     }
+
+
+
 
 
 @app.exception_handler(StarletteHTTPException)
