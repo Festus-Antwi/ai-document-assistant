@@ -14,13 +14,10 @@ from sqlalchemy import select
 from app import models
 
 router = APIRouter()
-UPLOAD_DIR = Path("uploads")
 
 
 @router.post("/summarize/{document_id}", response_model=SummaryResponse, status_code=status.HTTP_200_OK)
 async def summarize_text(document_id:int, db:Annotated[Session, Depends(get_db)]):
-    # result = db.execute(select(models.Document).where(models.Document.id == document_id))
-    # document = result.scalars().first()
     document = db.get(models.Document,document_id)
     if not document:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found") 
@@ -44,39 +41,48 @@ async def summarize_text(document_id:int, db:Annotated[Session, Depends(get_db)]
     db.refresh(new_summary)
     return new_summary  
        
-        
 
-@router.post("/ask/{filename}")
-async def ask_document(filename:str, question_request:QuestionRequest):
-    file_path = UPLOAD_DIR / filename
+@router.post("/ask/{document_id}", response_model=QuestionResponse, status_code=status.HTTP_200_OK)
+async def ask_document(document_id:int, question_request:QuestionRequest, db:Annotated[Session, Depends(get_db)]):
+    document = db.get(models.Document,document_id)
+    if not document:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
 
-    if not file_path.exists():
-       return {
-            "error":"File not found"
-       }
+    if not document.file_exists:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document file is missing")
     
-    raw_text = extract_pdf_text(file_path)
+    raw_text = extract_pdf_text(document.filepath)
     cleaned_text = clean_pdf_text(raw_text)
-    answer = answer_question(cleaned_text, question_request.question)
+    text = answer_question(cleaned_text, question_request.question)
     
-    return {
-        "filename":filename,
-        "question":question_request.question,
-        "answer":answer
-    }
+    new_question = models.Question(document_id=document.id, question=question_request.question, answer=text)
+    db.add(new_question)
+    db.commit()
+    db.refresh(new_question)
+    return new_question
 
 
-@router.post("/extract/{filename}")
-async def extract_information(filename:str):
-    filepath = UPLOAD_DIR/filename
-    if not filepath.exists():
-        return{
-            "error":"File not found"
-        }
+@router.post("/extract/{document_id}", response_model=ExtractionResponse, status_code=status.HTTP_200_OK)
+async def extract_information(document_id:int, db:Annotated[Session, Depends(get_db)]):
+    document = db.get(models.Document, document_id)
+    if not document:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+    if not document.file_exists:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document file is missing")
     
-    raw_text = extract_pdf_text(filepath)
+    raw_text = extract_pdf_text(document.filepath)
     cleaned_text = clean_pdf_text(raw_text)
+    result = extract_key_information(cleaned_text)
 
-    key_information = extract_key_information(cleaned_text)
-
-    return key_information
+    existing_extraction = document.extraction
+    if existing_extraction:
+        document.extraction.extracted_json = result
+        db.commit()
+        db.refresh(existing_extraction)
+        return existing_extraction
+    
+    new_extraction = models.Extraction(document_id=document.id, extracted_json = result)
+    db.add(new_extraction)
+    db.commit()
+    db.refresh(new_extraction)
+    return new_extraction

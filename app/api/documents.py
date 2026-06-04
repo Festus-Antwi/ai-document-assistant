@@ -6,7 +6,7 @@ from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from app.services.pdf_service import extract_pdf_text, clean_pdf_text
 from fastapi import status
 
-from app.schemas import DocumentResponse
+from app.schemas import DocumentResponse, SummaryResponse, ExtractionResponse, QuestionResponse
 
 from app.database import get_db
 from sqlalchemy import select
@@ -49,17 +49,129 @@ def get_documents(db:Annotated[Session, Depends(get_db)]):
 
 @router.get("/{document_id}", response_model=DocumentResponse)
 def get_document(document_id: int, db: Annotated[Session, Depends(get_db)]):
-    result = db.execute(select(models.Document).where(models.Document.id == document_id))
-    document = result.scalars().first()
+    document = db.get(models.Document,document_id)
     if document:
         return document
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
 
 
+@router.get("/{document_id}/extraction", response_model=ExtractionResponse)
+def get_document_extraction(document_id:int, db:Annotated[Session, Depends(get_db)]):
+    document = db.get(models.Document, document_id)
+    if document:
+        if not document.extraction:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document has no extraction")
+        return document.extraction
+    
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+
+@router.get("/{document_id}/summary", response_model=SummaryResponse)
+def get_document_extraction(document_id:int, db:Annotated[Session, Depends(get_db)]):
+    document = db.get(models.Document, document_id)
+    if document:
+        if not document.extraction:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document has no summary")
+        return document.summary
+    
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+
+@router.get("/{document_id}/questions", response_model=list[QuestionResponse])
+def get_document_questions(document_id:int, db:Annotated[Session, Depends(get_db)]):
+    document = db.get(models.Document, document_id)
+    if document:
+        if not document.questions:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document has no questions")
+        return document.questions
+    
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+
+#DELETE ROUTES
+####################################################
+@router.delete("/delete/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_document(document_id:int, db:Annotated[Session, Depends(get_db)]):
+    document = db.get(models.Document,document_id)
+    if document:
+        if not document.file_exists:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document file is missing")
+        
+        Path(document.filepath).unlink(missing_ok=True)
+        db.delete(document)
+        db.commit()
+    
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+
+
+@router.delete("/documents/{document_id}/summary", status_code=status.HTTP_204_NO_CONTENT)
+def delete_summary(document_id: int, db: Annotated[Session, Depends(get_db)]):
+    document = db.get(models.Document,document_id)
+
+    if not document:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+    if not document.summary:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Summary not found")
+
+    db.delete(document.summary)
+    db.commit()
+
+
+@router.delete("/documents/{document_id}/questions", status_code=status.HTTP_204_NO_CONTENT)
+def delete_questions(document_id: int, db: Annotated[Session, Depends(get_db)]):
+    document = db.get(models.Document,document_id)
+
+    if not document:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+    if not document.questions:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Questions not found")
+
+    db.delete(document.questions)
+    db.commit()
+
+
+@router.delete("/questions/{question_id}",status_code=status.HTTP_204_NO_CONTENT)
+def delete_question(question_id: int,db: Annotated[Session, Depends(get_db)]):
+    question = db.get(models.Question,question_id)
+
+    if not question:
+        raise HTTPException(status_code=404,detail="Question not found")
+
+    db.delete(question)
+    db.commit()
+
+
+@router.delete("/documents/{document_id}/extraction", status_code=status.HTTP_204_NO_CONTENT)
+def delete_extraction(document_id: int, db: Annotated[Session, Depends(get_db)]):
+    document = db.get(models.Document,document_id)
+
+    if not document:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+    if not document.questions:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Questions not found")
+
+    db.delete(document.questions)
+    db.commit()
+
+
+@router.post("/sync-documents")
+def sync_documents(db:Annotated[Session, Depends(get_db)]):
+    results = db.execute(select(models.Document))
+    documents = results.scalars().all()
+    for document in documents:
+        if not document.file_exists:
+            db.delete(document)
+    db.commit()
+
+
+
+
 @router.get("/extract/{document_id}", status_code=status.HTTP_200_OK)
 def extract_document_text(document_id:int, db: Annotated[Session, Depends(get_db)]):
-    result = db.execute(select(models.Document).where(models.Document.id == document_id))
-    document = result.scalars().first()
+    document = db.get(models.Document,document_id)
     if document:
         if not document.file_exists:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document file is missing")
@@ -73,30 +185,3 @@ def extract_document_text(document_id:int, db: Annotated[Session, Depends(get_db
         }
     
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
-
-
-@router.delete("/delete/{document_id}", response_model=DocumentResponse, status_code=status.HTTP_200_OK)
-def delete_document(document_id:int, db:Annotated[Session, Depends(get_db)]):
-    result = db.execute(select(models.Document).where(models.Document.id == document_id))
-    document = result.scalars().first()
-    if document:
-        if not document.file_exists:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document file is missing")
-        
-        Path(document.filepath).unlink(missing_ok=True)
-        db.delete(document)
-        db.commit()
-        return document
-    
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
-
-
-@router.post("/sync-documents")
-def sync_documents(db:Annotated[Session, Depends(get_db)]):
-    results = db.execute(select(models.Document))
-    documents = results.scalars().all()
-    for document in documents:
-        if not document.file_exists:
-            db.delete(document)
-    db.commit()
-
