@@ -2,7 +2,7 @@ from __future__ import annotations
 from datetime import datetime, UTC
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from sqlalchemy import Integer, String, DateTime, ForeignKey, Text
-from app.database.db import Base
+from app.database import Base
 from pathlib import Path
 
 # class User(Base):
@@ -20,6 +20,7 @@ class Document(Base):
 
     id:Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     stored_filename: Mapped[str] = mapped_column(String(200),nullable=False)
+    original_filename:Mapped[str] = mapped_column(String(200), nullable=False)
     uploaded_at:Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda:datetime.now(UTC))
     
     questions:Mapped[list[Question]] = relationship(back_populates="document")
@@ -29,15 +30,20 @@ class Document(Base):
         return str(
             Path("uploads")/self.stored_filename
         )
+    
+    @property
+    def file_exists(self) -> bool:
+        return Path(self.filepath).exists()
 
 
 class Summary(Base):
     __tablename__ = "summaries"
     
     id:Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    document_id:Mapped[int] = mapped_column(Integer, ForeignKey("documents.id"), unique=True, nullable=False , index=True)
+    document_id:Mapped[int] = mapped_column(Integer, ForeignKey("documents.id"), nullable=False , index=True)
     summary_text:Mapped[str] = mapped_column(Text)
     generated_at:Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda:datetime.now(UTC))
+    document:Mapped[Document] = relationship(back_populates="summaries")
 
 
 class Question(Base):

@@ -1,34 +1,45 @@
 from pathlib import Path
-from fastapi import APIRouter
-from app.schemas.question import QuestionRequest
+import uuid
+from fastapi import APIRouter, HTTPException
+from fastapi import status, Depends
+from typing import Annotated
+from app.schemas import QuestionRequest
 from app.services.ai_service import summarize_document, answer_question, extract_key_information
 from app.services.pdf_service import extract_pdf_text, clean_pdf_text
+
+from app.schemas import SummaryResponse, ExtractionResponse, QuestionRequest, QuestionResponse
+from app.database import get_db
+from sqlalchemy.orm import Session
+from sqlalchemy import select
+from app import models
 
 router = APIRouter()
 UPLOAD_DIR = Path("uploads")
 
 
-@router.post("/summarize/{filename}")
-async def summarize_text(filename:str):
-    file_path = UPLOAD_DIR / filename
-
-    if not file_path.exists():
-       return {
-            "error":"File not found"
-       }
+@router.post("/summarize/{document_id}", response_model=SummaryResponse, status_code=status.HTTP_200_OK)
+async def summarize_text(document_id:int, db:Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.Document).where(models.Document.id == document_id))
+    document = result.scalars().first()
+    if document:
+        if not document.file_exists:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document file is missing")
+        
+        raw_text = extract_pdf_text(document.filepath)
+        cleaned_text = clean_pdf_text(raw_text)
+        text = summarize_document(cleaned_text)
+        new_summary = models.Summary(summary_text=text, document_id=document.id)
+        db.add(new_summary)
+        db.commit()
+        db.refresh(new_summary)
+        return new_summary
     
-    raw_text = extract_pdf_text(file_path)
-    cleaned_text = clean_pdf_text(raw_text)
-    summary = summarize_document(cleaned_text)
-    
-    return {
-        "filename":filename,
-        "summary":summary
-    }
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found") 
+        
 
 
 @router.post("/ask/{filename}")
-def ask_document(filename:str, question_request:QuestionRequest):
+async def ask_document(filename:str, question_request:QuestionRequest):
     file_path = UPLOAD_DIR / filename
 
     if not file_path.exists():
@@ -48,7 +59,7 @@ def ask_document(filename:str, question_request:QuestionRequest):
 
 
 @router.post("/extract/{filename}")
-def extract_information(filename:str):
+async def extract_information(filename:str):
     filepath = UPLOAD_DIR/filename
     if not filepath.exists():
         return{
