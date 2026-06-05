@@ -26,6 +26,7 @@ class Document(Base):
     questions:Mapped[list[Question]] = relationship(back_populates="document", cascade="all, delete-orphan")
     summary: Mapped[Summary] = relationship(back_populates="document", uselist=False, cascade="all, delete-orphan")
     extraction:Mapped[Extraction] = relationship(back_populates="document", uselist=False, cascade="all, delete-orphan")
+    analysis: Mapped["DocumentAnalysis"] = relationship(back_populates="document", uselist=False, cascade="all, delete-orphan")
 
     @property
     def filepath(self) -> str:
@@ -38,14 +39,18 @@ class Document(Base):
         return Path(self.filepath).exists()
 
 
-class Summary(Base):
-    __tablename__ = "summaries"
-    
-    id:Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    document_id:Mapped[int] = mapped_column(Integer, ForeignKey("documents.id", ondelete="CASCADE"), unique=True, nullable=False , index=True)
-    summary_text:Mapped[str] = mapped_column(Text)
-    generated_at:Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda:datetime.now(UTC),)
-    document:Mapped[Document] = relationship(back_populates="summary")
+class DocumentAnalysis(Base):
+    __tablename__ = "document_analyses"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    document_id: Mapped[int] = mapped_column(ForeignKey("documents.id", ondelete="CASCADE"),unique=True, nullable=False, index=True)
+    document_type: Mapped[str] = mapped_column(String(100),nullable=False)
+    summary: Mapped[str] = mapped_column(Text)
+    extracted_json: Mapped[dict] = mapped_column(JSON)
+    faq_json: Mapped[list[dict]] = mapped_column(JSON)
+    generated_at:Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda:datetime.now(UTC))
+    document: Mapped["Document"] = relationship(back_populates="analysis")
+
 
 
 class Question(Base):
@@ -57,6 +62,17 @@ class Question(Base):
     answer:Mapped[str] = mapped_column(Text)
     created_at:Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda:datetime.now(UTC))
     document:Mapped[Document] = relationship(back_populates="questions")
+
+
+
+class Summary(Base):
+    __tablename__ = "summaries"
+    
+    id:Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    document_id:Mapped[int] = mapped_column(Integer, ForeignKey("documents.id", ondelete="CASCADE"), unique=True, nullable=False , index=True)
+    summary_text:Mapped[str] = mapped_column(Text)
+    generated_at:Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda:datetime.now(UTC))
+    document:Mapped[Document] = relationship(back_populates="summary")
 
 
 class Extraction(Base):

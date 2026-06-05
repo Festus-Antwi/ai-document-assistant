@@ -3,10 +3,9 @@ from pathlib import Path
 import uuid
 
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
-from app.services.text_extraction_service import extract_document_text, clean_document_text
 from fastapi import status
 
-from app.schemas import DocumentResponse, SummaryResponse, ExtractionResponse, QuestionResponse
+from app.schemas import DocumentResponse, SummaryResponse, ExtractionResponse, QuestionResponse, AnalysisResponse
 
 from app.database import get_db
 from sqlalchemy import select
@@ -73,12 +72,23 @@ def get_document_extraction(document_id:int, db:Annotated[Session, Depends(get_d
 
 
 @router.get("/{document_id}/summary", response_model=SummaryResponse)
-def get_document_extraction(document_id:int, db:Annotated[Session, Depends(get_db)]):
+def get_document_summary(document_id:int, db:Annotated[Session, Depends(get_db)]):
     document = db.get(models.Document, document_id)
     if document:
         if not document.extraction:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document has no summary")
         return document.summary
+    
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+
+@router.get("/{document_id}/analysis", response_model=AnalysisResponse, status_code=status.HTTP_200_OK)
+def get_document_analysis(document_id:int, db:Annotated[Session, Depends(get_db)]):
+    document = db.get(models.Document, document_id)
+    if document:
+        if not document.analysis:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document has no analysis")
+        return document.analysis
     
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
 
@@ -96,7 +106,7 @@ def get_document_questions(document_id:int, db:Annotated[Session, Depends(get_db
 
 #DELETE ROUTES
 ####################################################
-@router.delete("/delete/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_document(document_id:int, db:Annotated[Session, Depends(get_db)]):
     document = db.get(models.Document,document_id)
     if document:
@@ -110,8 +120,8 @@ def delete_document(document_id:int, db:Annotated[Session, Depends(get_db)]):
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
 
 
-@router.delete("/documents/{document_id}/summary", status_code=status.HTTP_204_NO_CONTENT)
-def delete_summary(document_id: int, db: Annotated[Session, Depends(get_db)]):
+@router.delete("/{document_id}/summary", status_code=status.HTTP_204_NO_CONTENT)
+def delete_document_summary(document_id: int, db: Annotated[Session, Depends(get_db)]):
     document = db.get(models.Document,document_id)
 
     if not document:
@@ -124,8 +134,8 @@ def delete_summary(document_id: int, db: Annotated[Session, Depends(get_db)]):
     db.commit()
 
 
-@router.delete("/documents/{document_id}/questions", status_code=status.HTTP_204_NO_CONTENT)
-def delete_questions(document_id: int, db: Annotated[Session, Depends(get_db)]):
+@router.delete("/{document_id}/questions", status_code=status.HTTP_204_NO_CONTENT)
+def delete_document_questions(document_id: int, db: Annotated[Session, Depends(get_db)]):
     document = db.get(models.Document,document_id)
 
     if not document:
@@ -149,8 +159,8 @@ def delete_question(question_id: int,db: Annotated[Session, Depends(get_db)]):
     db.commit()
 
 
-@router.delete("/documents/{document_id}/extraction", status_code=status.HTTP_204_NO_CONTENT)
-def delete_extraction(document_id: int, db: Annotated[Session, Depends(get_db)]):
+@router.delete("/{document_id}/extraction", status_code=status.HTTP_204_NO_CONTENT)
+def delete_document_extraction(document_id: int, db: Annotated[Session, Depends(get_db)]):
     document = db.get(models.Document,document_id)
 
     if not document:
@@ -163,7 +173,21 @@ def delete_extraction(document_id: int, db: Annotated[Session, Depends(get_db)])
     db.commit()
 
 
-@router.post("/sync-documents")
+@router.delete("/{document_id}/analysis", status_code=status.HTTP_204_NO_CONTENT)
+def delete_document_analysis(document_id: int, db: Annotated[Session, Depends(get_db)]):
+    document = db.get(models.Document,document_id)
+
+    if not document:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+    if not document.analysis:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found")
+
+    db.delete(document.analysis)
+    db.commit()
+
+
+@router.post("/sync-documents", status_code=status.HTTP_200_OK)
 def sync_documents(db:Annotated[Session, Depends(get_db)]):
     results = db.execute(select(models.Document))
     documents = results.scalars().all()
@@ -171,23 +195,24 @@ def sync_documents(db:Annotated[Session, Depends(get_db)]):
         if not document.file_exists:
             db.delete(document)
     db.commit()
-
-
-
-
-@router.get("/extract/{document_id}", status_code=status.HTTP_200_OK)
-def extract_text(document_id:int, db: Annotated[Session, Depends(get_db)]):
-    document = db.get(models.Document,document_id)
-    if document:
-        if not document.file_exists:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document file is missing")
-        
-        raw_text = extract_document_text(document.filepath)
-        clean_text = clean_document_text(raw_text)
-
-        return {
-            "filename": document.original_filename,
-            "text": clean_text
-        }
     
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+
+
+
+
+# @router.get("/extract/{document_id}", status_code=status.HTTP_200_OK)
+# def extract_text(document_id:int, db: Annotated[Session, Depends(get_db)]):
+#     document = db.get(models.Document,document_id)
+#     if document:
+#         if not document.file_exists:
+#             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document file is missing")
+        
+#         raw_text = extract_document_text(document.filepath)
+#         clean_text = clean_document_text(raw_text)
+
+#         return {
+#             "filename": document.original_filename,
+#             "text": clean_text
+#         }
+    
+#     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
