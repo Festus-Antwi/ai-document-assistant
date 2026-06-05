@@ -4,13 +4,19 @@ from fastapi import APIRouter, HTTPException
 from fastapi import status, Depends
 from typing import Annotated
 from app.schemas import QuestionRequest
-from app.services.ai_service import summarize_document, answer_question, extract_key_information
-from app.services.pdf_service import extract_pdf_text, clean_pdf_text
+from app.services.ai_service import (
+    call_gemini_with_retry,
+    summarize_document, 
+    answer_question, 
+    extract_key_information, 
+    extract_key_information_pdf
+    )
+
+from app.services.text_extraction_service import extract_document_text, clean_document_text
 
 from app.schemas import SummaryResponse, ExtractionResponse, QuestionRequest, QuestionResponse
 from app.database import get_db
 from sqlalchemy.orm import Session
-from sqlalchemy import select
 from app import models
 
 router = APIRouter()
@@ -23,19 +29,21 @@ async def summarize_text(document_id:int, db:Annotated[Session, Depends(get_db)]
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found") 
     if not document.file_exists:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document file is missing")
+    
+    raw_text = extract_document_text(document.filepath)
+    cleaned_text = clean_document_text(raw_text)
 
-    raw_text = extract_pdf_text(document.filepath)
-    cleaned_text = clean_pdf_text(raw_text)
-    text = summarize_document(cleaned_text)
+    # result = summarize_document(cleaned_text)
+    result = call_gemini_with_retry(lambda:summarize_document(cleaned_text))
 
     existing_summary =  document.summary
     if existing_summary: #Update Summary text
-        existing_summary.summary_text = text
+        existing_summary.summary_text = result
         db.commit()
         db.refresh(existing_summary)
         return existing_summary
         
-    new_summary = models.Summary(summary_text=text, document_id=document.id)
+    new_summary = models.Summary(summary_text=result, document_id=document.id)
     db.add(new_summary)
     db.commit()
     db.refresh(new_summary)
@@ -51,11 +59,12 @@ async def ask_document(document_id:int, question_request:QuestionRequest, db:Ann
     if not document.file_exists:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document file is missing")
     
-    raw_text = extract_pdf_text(document.filepath)
-    cleaned_text = clean_pdf_text(raw_text)
-    text = answer_question(cleaned_text, question_request.question)
+    raw_text = extract_document_text(document.filepath)
+    cleaned_text = clean_document_text(raw_text)
+    # result = answer_question(cleaned_text, question_request.question)
+    result = call_gemini_with_retry(lambda:answer_question(cleaned_text))
     
-    new_question = models.Question(document_id=document.id, question=question_request.question, answer=text)
+    new_question = models.Question(document_id=document.id, question=question_request.question, answer=result)
     db.add(new_question)
     db.commit()
     db.refresh(new_question)
@@ -70,9 +79,15 @@ async def extract_information(document_id:int, db:Annotated[Session, Depends(get
     if not document.file_exists:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document file is missing")
     
-    raw_text = extract_pdf_text(document.filepath)
-    cleaned_text = clean_pdf_text(raw_text)
-    result = extract_key_information(cleaned_text)
+    extension = Path(document.filepath).suffix.lower()
+    if extension == ".pdf":
+        # result = extract_key_information_pdf(document.filepath)
+        result = call_gemini_with_retry(lambda:extract_key_information_pdf(document.filepath))
+    else:
+        raw_text = extract_document_text(document.filepath)
+        cleaned_text = clean_document_text(raw_text)
+        # result = extract_key_information(cleaned_text)
+        result = call_gemini_with_retry(lambda:extract_key_information_pdf(cleaned_text))
 
     existing_extraction = document.extraction
     if existing_extraction:

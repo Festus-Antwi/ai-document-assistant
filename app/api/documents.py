@@ -3,7 +3,7 @@ from pathlib import Path
 import uuid
 
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
-from app.services.pdf_service import extract_pdf_text, clean_pdf_text
+from app.services.text_extraction_service import extract_document_text, clean_document_text
 from fastapi import status
 
 from app.schemas import DocumentResponse, SummaryResponse, ExtractionResponse, QuestionResponse
@@ -19,14 +19,20 @@ router = APIRouter()
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
-
+ALLOWED_EXTENSIONS = {
+    ".pdf",
+    ".docx",
+    ".txt"
+}
 
 #Upload Document
 @router.post("/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
 async def upload_document(db: Annotated[Session, Depends(get_db)], file: UploadFile = File(...)):
     extension = Path(file.filename).suffix
+    if extension not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported File Type")
+    
     stored_filename = f"{uuid.uuid4()}{extension}"
-
     file_path = UPLOAD_DIR / stored_filename
 
     with open(file_path, "wb") as buffer:
@@ -170,14 +176,14 @@ def sync_documents(db:Annotated[Session, Depends(get_db)]):
 
 
 @router.get("/extract/{document_id}", status_code=status.HTTP_200_OK)
-def extract_document_text(document_id:int, db: Annotated[Session, Depends(get_db)]):
+def extract_text(document_id:int, db: Annotated[Session, Depends(get_db)]):
     document = db.get(models.Document,document_id)
     if document:
         if not document.file_exists:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document file is missing")
         
-        raw_text = extract_pdf_text(document.filepath)
-        clean_text = clean_pdf_text(raw_text)
+        raw_text = extract_document_text(document.filepath)
+        clean_text = clean_document_text(raw_text)
 
         return {
             "filename": document.original_filename,

@@ -8,6 +8,7 @@ dependencies = [
     "fastapi[standard]>=0.136.3",
     "google-genai>=2.7.0",
     "passlib[bcrypt]>=1.7.4",
+    "pymupdf>=1.27.2.3",
     "pypdf2>=3.0.1",
     "python-docx>=1.2.0",
     "python-dotenv>=1.2.2",
