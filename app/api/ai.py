@@ -87,7 +87,7 @@ async def extract_information(document_id:int, db:Annotated[Session, Depends(get
         raw_text = extract_document_text(document.filepath)
         cleaned_text = clean_document_text(raw_text)
         # result = extract_key_information(cleaned_text)
-        result = call_gemini_with_retry(lambda:extract_key_information_pdf(cleaned_text))
+        result = call_gemini_with_retry(lambda:extract_key_information(cleaned_text))
 
     existing_extraction = document.extraction
     if existing_extraction:
