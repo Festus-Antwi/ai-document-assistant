@@ -8,7 +8,25 @@ class DocumentResponse(BaseModel):
     original_filename: str
     uploaded_at: datetime
 
+class FAQItem(BaseModel):
+    question: str
+    answer: str
 
+class AnalysisResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id:int
+    document_id:int
+    document_type:str
+    summary:str
+    extracted_json: dict
+    faq_json:list[FAQItem]
+    generated_at:datetime
+
+class GeminiAnalysis(BaseModel):
+    document_type: str
+    summary: str
+    key_information: dict
+    faq: list
 
 class SummaryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
