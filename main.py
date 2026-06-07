@@ -17,7 +17,8 @@ from app.database import engine, Base
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Enterprise AI Document Assistant")
+app = FastAPI(title="AI Document Assistant")
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
