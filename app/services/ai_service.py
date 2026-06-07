@@ -41,6 +41,7 @@ def call_gemini_with_retry(fn, max_retries=5):
 
     raise Exception("Max retries exceeded")
 
+
 client = genai.Client(
     api_key=GEMINI_API_KEY
 )

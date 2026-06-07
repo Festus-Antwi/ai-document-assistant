@@ -1,0 +1,53 @@
+{% extends "layout.html" %}
+
+{% block title %}
+Documents
+{% endblock %}
+
+{% block content %}
+
+<section class="card">
+    <!-- <div class="alert success">
+         Document uploaded successfully.
+    </div> -->
+    <h2>Upload Document</h2>
+    <form action="{{ url_for('upload_file')}}" method="post" enctype="multipart/form-data">
+        <input type="file" name="file" required>
+        <button type="submit">
+            Upload
+        </button>
+    </form>
+</section>
+<section class="card">
+
+<h2>Documents</h2>
+
+<table class="document-table">
+
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Uploaded</th>
+        </tr>
+    </thead>
+
+    <tbody>
+
+        {% for document in documents %}
+        <tr>
+            <td>
+                <a href="{{ url_for('document_page', document_id=document.id) }}">
+                    {{ document.original_filename }}
+                </a>
+            </td>
+            <td>
+                {{ document.uploaded_at.strftime('%B, %d, %Y') }}
+            </td>
+        </tr>
+        {% endfor %}
+
+    </tbody>
+</table>
+</section>
+
+{% endblock %}
