@@ -3,13 +3,51 @@ body {
     background: #f5f6fa;
     margin: 0;
 }
-a{
+
+.home-link{
+    text-decoration: none;
+    
+}
+.home-link:visited{
+    color: inherit;
+}
+
+.document-link{
+    color:#0668f0;
     text-decoration: none;
 }
+
+.document-link:visited {
+    color: #0668f0;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.sync-docs{
+    display: inline-block;
+    cursor: pointer;
+    border:none;
+    background-color: #ffffff;
+    color:  #1f2937;
+    width: 150px;
+    height: 40px;
+    border-radius: 3px;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.sync-docs:hover{
+    background-color: #606060;
+    color: white;
+}
+
+
 .topbar {
     background: #1f2937;
     color: white;
-    padding: 1rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
 }
 
 .container {
@@ -49,7 +87,7 @@ button {
     width: 150px;
     height: 40px;
     border-radius: 3px;
-    transition: background-color 0.5s;
+    transition: background-color 0.3s;
 }
 
 button:hover{

@@ -62,7 +62,6 @@ async def analyse_document(document_id:int,  db:Annotated[Session, Depends(get_d
         except Exception as e:
             print("ANALYSIS ERROR:", repr(e))
             raise
-            # raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Gemini Currently Unavailable")
     else:
         raw_text = extract_document_text(document.filepath)
         cleaned_text = clean_document_text(raw_text)
@@ -70,7 +69,6 @@ async def analyse_document(document_id:int,  db:Annotated[Session, Depends(get_d
             result = call_gemini_with_retry(lambda:analyse(cleaned_text))
         except Exception as e:
             print("ANALYSIS ERROR:", repr(e))
-            # raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Gemini Currently Unavailable")
             raise
     validated = GeminiAnalysis.model_validate(result)
 

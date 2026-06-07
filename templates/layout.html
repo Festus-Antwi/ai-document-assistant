@@ -14,7 +14,10 @@
 </head>
 <body>
   <header class="topbar">
-      <h1>AI Document Assistant</h1>
+        <a class="home-link" href="{{url_for('home')}}"><h1 class="app-name">AI Document Assistant</h1></a>
+      <form action="{{url_for('web_sync_documents')}}" method="post">
+        <button class="sync-docs" type="submit">Sync Documents</button>
+      </form>
   </header>
 
   <main class="container">
