@@ -1,0 +1,81 @@
+{% extends "layout.html" %}
+
+{% block content %}
+
+    <section class="card">
+        <h2>{{ document.original_filename }}</h2>
+        <p>
+            Uploaded: {{ document.uploaded_at.strftime('%B, %d, %Y') }}
+        </p>
+    </section>
+
+    <section class="actions">
+        <form action="{{ url_for('web_analyse_document', document_id=document.id) }}" method="post">
+            {% if document.analysis %}
+                <button type="submit">Re-analyze Document</button>
+            {% else %}
+                <button type="submit">Analyze Document</button>
+            {% endif %}
+        </form>
+    </section>
+
+    {% if document.analysis %}
+
+        <section class="card">
+            <h3>Document Type</h3>
+            <p>{{ document.analysis.document_type }}</p>
+        </section>
+
+        <section class="card">
+            <h3>Summary</h3>
+            <p>{{ document.analysis.summary }}</p>
+        </section>
+
+        <section class="card">
+            <h3>Extracted Information</h3>
+            <pre>
+                {{ document.analysis.extracted_json | tojson(indent=2) }}
+            </pre>
+        </section>
+
+        <section class="card">
+            <h3>FAQ</h3>
+            {% for item in document.analysis.faq_json %}
+                <p><strong>{{ item.question }}</strong></p>
+                <p>{{ item.answer }}</p>
+                <hr>
+            {% endfor %}
+        </section>
+
+    {% endif %}
+    
+    <h3>Question History</h3>
+    {% for q in document.questions %}
+        <div class="card">
+            <strong>Q:</strong> {{ q.question }}
+            <br>
+            <strong>A:</strong> {{ q.answer }}
+        </div>
+    {% endfor %}
+
+
+    <section class="card">
+        <h3>Ask Questions</h3>
+        <form action="{{ url_for('ask_question', document_id=document.id) }}" method="post">
+            <textarea
+                name="question"
+                rows="4"
+                required>
+            </textarea>
+            <button type="submit">Ask</button>
+        </form>
+    </section>
+
+    <!-- {% if answer %}
+        <section class="card">
+            <h3>Answer</h3>
+            <p>{{ answer }}</p>
+        </section>
+    {% endif %} -->
+
+{% endblock %}

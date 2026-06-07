@@ -2,8 +2,8 @@ from fastapi import FastAPI
 from app.api.documents import router as api_document_router
 from app.api.ai import router as api_ai_router
 
-# from app.web.documents import router as web_document_router
-# from app.web.ai import router as web_ai_router
+from app.web.documents import router as web_document_router
+from app.web.ai import router as web_ai_router
 
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.exceptions import RequestValidationError
@@ -25,17 +25,8 @@ templates = Jinja2Templates(directory="templates")
 app.include_router(api_document_router, prefix="/api/documents", tags=["Documents"])
 app.include_router(api_ai_router, prefix="/api/ai", tags=["AI"])
 
-# app.include_router(web_document_router, prefix="/documents", tags=["Documents"], include_in_schema=False)
-# app.include_router(web_ai_router, prefix="/ai", tags=["AI"], include_in_schema=False)
-
-
-@app.get("/")
-def root():
-    return {
-        "message": "Enterprise AI Document Assistant"
-    }
-
-
+app.include_router(web_document_router, include_in_schema=False)
+app.include_router(web_ai_router, include_in_schema=False)
 
 
 

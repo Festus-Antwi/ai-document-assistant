@@ -3,7 +3,6 @@ from datetime import datetime, UTC
 from fastapi import APIRouter, HTTPException
 from fastapi import status, Depends
 from typing import Annotated
-from app.schemas import QuestionRequest
 from app.services.ai_service import (
     call_gemini_with_retry,
     summarize, 
@@ -43,7 +42,7 @@ async def summarize_document(document_id:int, db:Annotated[Session, Depends(get_
     try:
         result = call_gemini_with_retry(lambda:summarize(cleaned_text))
     except Exception as e:
-        print("ANALYSIS ERROR:", repr(e))
+        print("SUMMARY ERROR:", repr(e))
         raise
         # raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Gemini Currently Unavailable")
 
@@ -74,9 +73,9 @@ async def ask_document(document_id:int, question_request:QuestionRequest, db:Ann
     raw_text = extract_document_text(document.filepath)
     cleaned_text = clean_document_text(raw_text)
     try:
-        result = call_gemini_with_retry(lambda:answer_question(cleaned_text))
+        result = call_gemini_with_retry(lambda:answer_question(cleaned_text, question_request))
     except Exception as e:
-        print("ANALYSIS ERROR:", repr(e))
+        print("ANSWERING ERROR:", repr(e))
         raise
         # raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Gemini Currently Unavailable")
     
@@ -101,7 +100,7 @@ async def extract_document(document_id:int, db:Annotated[Session, Depends(get_db
             result = call_gemini_with_retry(lambda:extract_key_information_pdf(document.filepath))
         except Exception as e:
             # raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Gemini Currently Unavailable")
-            print("ANALYSIS ERROR:", repr(e))
+            print("EXTRACTION ERROR:", repr(e))
             raise
     else:
         raw_text = extract_document_text(document.filepath)
@@ -110,7 +109,7 @@ async def extract_document(document_id:int, db:Annotated[Session, Depends(get_db
             result = call_gemini_with_retry(lambda:extract_key_information(cleaned_text))
         except Exception as e:
             # raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Gemini Currently Unavailable")
-            print("ANALYSIS ERROR:", repr(e))
+            print("EXTRACTION ERROR:", repr(e))
             raise
 
     existing_extraction = document.extraction
