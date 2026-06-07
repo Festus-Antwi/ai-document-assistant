@@ -17,6 +17,11 @@
                 <button type="submit">Analyze Document</button>
             {% endif %}
         </form>
+        {% if document.analysis %}
+            <form action="{{url_for('web_delete_analysis', document_id=document.id)}}" method="post">
+                <button type="submit">Delete analysis</button>
+            </form>
+        {% endif %}
     </section>
 
     {% if document.analysis %}

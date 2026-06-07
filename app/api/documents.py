@@ -187,32 +187,4 @@ def delete_document_analysis(document_id: int, db: Annotated[Session, Depends(ge
     db.commit()
 
 
-@router.post("/sync-documents", status_code=status.HTTP_200_OK)
-def sync_documents(db:Annotated[Session, Depends(get_db)]):
-    results = db.execute(select(models.Document))
-    documents = results.scalars().all()
-    for document in documents:
-        if not document.file_exists:
-            db.delete(document)
-    db.commit()
-    
 
-
-
-
-# @router.get("/extract/{document_id}", status_code=status.HTTP_200_OK)
-# def extract_text(document_id:int, db: Annotated[Session, Depends(get_db)]):
-#     document = db.get(models.Document,document_id)
-#     if document:
-#         if not document.file_exists:
-#             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document file is missing")
-        
-#         raw_text = extract_document_text(document.filepath)
-#         clean_text = clean_document_text(raw_text)
-
-#         return {
-#             "filename": document.original_filename,
-#             "text": clean_text
-#         }
-    
-#     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
