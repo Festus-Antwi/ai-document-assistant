@@ -144,7 +144,7 @@ def delete_document_analysis(document_id: int, db: Annotated[Session, Depends(ge
 
 
 @router.post("/documents/sync_documents", name='web_sync_documents')
-def sync_documents(request:Request,db:Annotated[Session, Depends(get_db)]):
+def sync_documents(db:Annotated[Session, Depends(get_db)]):
     results = db.execute(select(models.Document))
     documents = results.scalars().all()
     for document in documents:
@@ -156,3 +156,20 @@ def sync_documents(request:Request,db:Annotated[Session, Depends(get_db)]):
         status_code=status.HTTP_303_SEE_OTHER
     )
 
+
+#Delete a question
+@router.post("/documents/{document_id}/questions/{question_id}/delete", name="delete_a_question")
+def delete_question(document_id, question_id: int,db: Annotated[Session, Depends(get_db)]):
+    document = db.get(models.Document,document_id)
+    question = db.get(models.Question,question_id)
+    if not document:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    if not question:
+        raise HTTPException(status_code=404,detail="Question not found")
+
+    db.delete(question)
+    db.commit()
+    return RedirectResponse(
+        url=f"/documents/{document_id}/#questions",
+        status_code=status.HTTP_303_SEE_OTHER
+    )
