@@ -29,8 +29,12 @@ The system can analyze a wide variety of business documents including:
 - General Business Documents
 
 ---
+## Screenshots
+![Document Page](screenshots/document_page.png)
+![Document Page](screenshots/extracted_section.png)
+![Document Page](screenshots/qa_section.png)
 
-
+---
 
 ## Installation
 
