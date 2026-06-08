@@ -43,12 +43,6 @@ Documents
             <td>
                 {{ document.uploaded_at.strftime('%B, %d, %Y') }}
             </td>
-            <td>
-                <form action="{{url_for('web_delete_document', document_id=document.id)}}" method="post">
-                    <button type="submit">Delete</button>
-                </form>
-            </td>
-           
         </tr>
         {% endfor %}
 

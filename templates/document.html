@@ -2,11 +2,16 @@
 
 {% block content %}
 
-    <section class="card">
-        <h2>{{ document.original_filename }}</h2>
-        <p>
-            Uploaded: {{ document.uploaded_at.strftime('%B, %d, %Y') }}
-        </p>
+    <section class="doc-card">
+        <div>
+            <h2>{{ document.original_filename }}</h2>
+            <p>
+                Uploaded: {{ document.uploaded_at.strftime('%B, %d, %Y') }}
+            </p>
+        </div>
+        <form action="{{url_for('web_delete_document', document_id=document.id)}}" method="post">
+            <button class="delete-bttn"type="submit">Delete</button>
+        </form>
     </section>
 
     <section class="actions">
@@ -19,7 +24,7 @@
         </form>
         {% if document.analysis %}
             <form action="{{url_for('web_delete_analysis', document_id=document.id)}}" method="post">
-                <button type="submit">Delete analysis</button>
+                <button class="delete-bttn" type="submit">Delete analysis</button>
             </form>
         {% endif %}
     </section>
@@ -56,31 +61,25 @@
     
     <h3>Question History</h3>
     {% for q in document.questions %}
-        <div class="card">
-            <strong>Q:</strong> {{ q.question }}
-            <br>
-            <strong>A:</strong> {{ q.answer }}
+        <div class="q-card">
+            <div>
+                <strong>Q:</strong> {{ q.question }}
+                <br>
+                <strong>A:</strong> {{ q.answer }}
+            </div>
+            <form action="{{ url_for('delete_a_question', document_id=document.id, question_id=q.id) }}" method="post">
+                <button class="delete-bttn" type="submit">Delete</button>
+            </form>
         </div>
     {% endfor %}
 
 
     <section class="card">
-        <h3>Ask Questions</h3>
+        <h3 id="questions">Ask Questions</h3>
         <form action="{{ url_for('ask_question', document_id=document.id) }}" method="post">
-            <textarea
-                name="question"
-                rows="4"
-                required>
-            </textarea>
-            <button type="submit">Ask</button>
+            <textarea name="question" rows="4" cols="50" required></textarea>
+            <button class="ask-bttn" type="submit">Ask</button>
         </form>
     </section>
-
-    <!-- {% if answer %}
-        <section class="card">
-            <h3>Answer</h3>
-            <p>{{ answer }}</p>
-        </section>
-    {% endif %} -->
 
 {% endblock %}

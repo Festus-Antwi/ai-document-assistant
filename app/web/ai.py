@@ -4,6 +4,8 @@ from fastapi import APIRouter, Form, HTTPException
 from fastapi.responses import RedirectResponse
 from fastapi import status, Depends
 from typing import Annotated
+
+import httpx
 from app.services.ai_service import (
     call_gemini_with_retry,
     answer_question, 
@@ -25,6 +27,8 @@ router = APIRouter()
 @router.post("/ask/{document_id}", name="ask_question")
 async def ask_document(document_id:int, db:Annotated[Session, Depends(get_db)], question:str=Form(...)):
     document = db.get(models.Document,document_id)
+    if not any(char.isalnum() for char in question):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No Question Detected")
     if not document:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
 
@@ -35,16 +39,24 @@ async def ask_document(document_id:int, db:Annotated[Session, Depends(get_db)], 
     cleaned_text = clean_document_text(raw_text)
     try:
        result = call_gemini_with_retry(lambda:answer_question(cleaned_text, question))
-    except Exception as e:
-        print("ANSWERING ERROR:", repr(e))
-        raise
+
+    except httpx.ConnectError:
+        raise HTTPException(
+            status_code=503,
+            detail="Unable to connect to Gemini. Check your internet connection."
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=503,
+            detail="Gemini currently unavailable."
+        )
     
     new_question = models.Question(document_id=document.id, question=question, answer=result)
     db.add(new_question)
     db.commit()
     db.refresh(new_question)
 
-    return RedirectResponse(url=f"/documents/{document_id}",status_code=303)
+    return RedirectResponse(url=f"/documents/{document_id}/#questions",status_code=303)
 
 
 @router.post("/analyse/{document_id}", name="web_analyse_document")
@@ -59,17 +71,31 @@ async def analyse_document(document_id:int,  db:Annotated[Session, Depends(get_d
     if extension == ".pdf":
         try:
             result = call_gemini_with_retry(lambda:analyse_pdf(document.filepath))
-        except Exception as e:
-            print("ANALYSIS ERROR:", repr(e))
-            raise
+        except httpx.ConnectError:
+            raise HTTPException(
+                status_code=503,
+                detail="Unable to connect to Gemini. Check your internet connection."
+            )
+        except Exception:
+            raise HTTPException(
+                status_code=503,
+                detail="Gemini currently unavailable."
+            )
     else:
         raw_text = extract_document_text(document.filepath)
         cleaned_text = clean_document_text(raw_text)
         try:
             result = call_gemini_with_retry(lambda:analyse(cleaned_text))
-        except Exception as e:
-            print("ANALYSIS ERROR:", repr(e))
-            raise
+        except httpx.ConnectError:
+            raise HTTPException(
+                status_code=503,
+                detail="Unable to connect to Gemini. Check your internet connection."
+            )
+        except Exception:
+            raise HTTPException(
+                status_code=503,
+                detail="Gemini currently unavailable."
+            )
     validated = GeminiAnalysis.model_validate(result)
 
     existing_analysis =  document.analysis
