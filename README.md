@@ -53,7 +53,6 @@ pip install uv
 
 ```bash
 git clone https://github.com/Festus-Antwi/ai-document-intelligence-platform.git
-cd ai-document-intelligence-platform
 ```
 
 
