@@ -64,7 +64,7 @@ Install all project dependencies from `pyproject.toml`:
 uv sync
 ```
 
-### 4. Configure Gemini API Key
+### Configure Gemini API Key
 
 Create a `.env` file in the project root.
 
@@ -72,16 +72,11 @@ Get a Gemini API key from:
 
 https://aistudio.google.com/
 
----
-### 5. Configure Environment Variables
-
-Create a `.env` file in the project root:
-
 ```env
 GEMINI_API_KEY=your_gemini_api_key
 ```
 
-### 6. Start Application
+### Start Application
 To start the application:
 
 ```bash
@@ -101,5 +96,5 @@ http://127.0.0.1:8000
 - OCR support for scanned PDFs
 - Batch document processing
 - Export analysis reports
-- Dashboard analytics
+- Dashboard analytic
 - etc
